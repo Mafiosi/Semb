@@ -10,7 +10,7 @@ import vlc
 ###########################
 
 ########    OUT PINS     ########
-pin_outs = [8, 10, 12, 16]
+pin_outs = [8, 10, 12, 16, 18, 22]
 
 ###    MOTOR
 choco_bar_motor = 8
@@ -18,16 +18,300 @@ coke_motor = 10
 gum_motor = 12
 
 ###    LEDS
-background_light_led = 16
-light_button = 18
+voice_led = 16
+money_ok_led = 18
+money_bad_led =22
 
 ########    IN PINS PINS     ########
-pin_ins = [18, 22, 24]
+pin_ins = [24, 26]
 
 ### CHANGE BUTTONS
-small_change = 22
-big_change = 24
+small_change = 24
+big_change = 26
 
+###########################
+####  CODE SENTENCES   ####
+###########################
+
+hello = ['hello', 'alo']
+chocobar = ['chocobar', 'Google', 'bar', 'chocolate', 'cocoa', 'hookah']
+coke = ['Coca-Cola', 'coke', 'cocaine']
+gum = ['gum']
+cash = ['money','have','change']
+
+##################################
+######    MUSIC FUNCTIONS   ######
+##################################
+
+def background_music(sound_queue,money,speech_lock,led_lock):
+
+    #Set Volume Parameters
+    volume_good = 60
+    volume_low = 20
+
+    #Establish Background Music
+    background = vlc.MediaPlayer("background_1.mp3")
+    background.play()
+    background.audio_set_volume(volume_good)
+
+    #Eventually change Sounds
+    while True:
+        info = sound_queue.get()
+        speech_lock.acquire()
+        #CASE 1 2 3 MONEY GOOD PRODUCT COMING OUT
+        if info == 1:
+            background.audio_set_volume(volume_low)
+            temp = vlc.MediaPlayer("Choco.mp3")
+            temp.play()
+            time.sleep(3)
+            temp.stop()
+            background.audio_set_volume(volume_good)
+            led_lock.acquire(True)
+            GPIO.output(money_ok_led, GPIO.LOW)
+            led_lock.release()
+        elif info == 2:
+            background.audio_set_volume(volume_low)
+            temp = vlc.MediaPlayer("Coke.mp3")
+            temp.play()
+            time.sleep(3)
+            temp.stop()
+            background.audio_set_volume(volume_good)
+            led_lock.acquire(True)
+            GPIO.output(money_ok_led, GPIO.LOW)
+            led_lock.release()
+        elif info == 3:
+            background.audio_set_volume(volume_low)
+            temp = vlc.MediaPlayer("Gum.mp3")
+            temp.play()
+            time.sleep(3)
+            temp.stop()
+            background.audio_set_volume(volume_good)
+            led_lock.acquire(True)
+            GPIO.output(money_ok_led, GPIO.LOW)
+            led_lock.release()
+
+        #CASE 11 22 33 MONEY BAD PRODUCT NOT COMING OUT
+        elif info == 11:
+            background.audio_set_volume(volume_low)
+            temp = vlc.MediaPlayer("miss_10.mp3")
+            temp.play()
+            time.sleep(4)
+            temp.stop()
+            background.audio_set_volume(volume_good)
+            led_lock.acquire(True)
+            GPIO.output(money_bad_led, GPIO.LOW)
+            led_lock.release()
+        elif info == 22:
+            background.audio_set_volume(volume_low)
+            if money >= 10:
+                temp = vlc.MediaPlayer("miss_10.mp3")
+                temp.play()
+                time.sleep(4)
+                temp.stop()
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.LOW)
+                led_lock.release()
+            else:
+                temp = vlc.MediaPlayer("miss_20.mp3")
+                temp.play()
+                time.sleep(4)
+                temp.stop
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.LOW)
+                led_lock.release()
+            background.audio_set_volume(volume_good)
+        elif info == 33:
+            background.audio_set_volume(volume_low)
+            if money >= 20:
+                temp = vlc.MediaPlayer("miss_10.mp3")
+                temp.play()
+                time.sleep(4)
+                temp.stop()
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.LOW)
+                led_lock.release()
+            elif money >= 10:
+                temp = vlc.MediaPlayer("miss_20.mp3")
+                temp.play()
+                time.sleep(4)
+                temp.stop()
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.LOW)
+                led_lock.release()
+            else:
+                temp = vlc.MediaPlayer("miss_30.mp3")
+                temp.play()
+                time.sleep(4)
+                temp.stop
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.LOW)
+                led_lock.release()
+            background.audio_set_volume(volume_good)
+
+        #CASE 4 SAYS THE MONEY YOU HAVE
+        elif info == 4:
+            background.audio_set_volume(volume_low)
+            if money == 10:
+                temp = vlc.MediaPlayer("have_10.mp3")
+                temp.play()
+                time.sleep(3)
+                temp.stop()
+            elif money == 20:
+                temp = vlc.MediaPlayer("have_20.mp3")
+                temp.play()
+                time.sleep(3)
+                temp.stop()
+            elif money == 30:
+                temp = vlc.MediaPlayer("have_30.mp3")
+                temp.play()
+                time.sleep(3)
+                temp.stop()
+            else:
+                temp = vlc.MediaPlayer("have_more_30.mp3")
+                temp.play()
+                time.sleep(3)
+                temp.stop()
+            background.audio_set_volume(volume_good)
+        speech_lock.release()
+
+##################################
+####   OPERATIONS FUNCTIONS   ####
+##################################
+
+def motor_control(motor_queue):
+
+    motor = motor_queue.get()
+
+    if motor == 1:
+        GPIO.output(choco_bar_motor,GPIO.HIGH)
+        time.sleep(2)
+        GPIO.output(choco_bar_motor,GPIO.LOW)
+    elif motor == 2:
+        GPIO.output(coke_motor,GPIO.HIGH)
+        time.sleep(2)
+        GPIO.output(coke_motor,GPIO.LOW)
+    if motor == 3:
+        GPIO.output(gum_motor,GPIO.HIGH)
+        time.sleep(2)
+        GPIO.output(gum_motor,GPIO.LOW)
+
+def check_money(money,money_lock,sound_queue):
+
+    while True:
+        if(GPIO.input(small_change)):
+            money_lock.acquire(True)
+            money = money + 10
+            print("You Have" + money + "Cents")
+            money_lock.release()
+            sound_queue.put(4)
+            time.sleep(0.4)
+
+        if(GPIO.input(big_change)):
+            money_lock.acquire(True)
+            money = money + 20
+            print("You Have" + money + "Cents")
+            money_lock.release()
+            sound_queue.put(4)
+            time.sleep(0.4)
+
+##################################
+######   SPEECH FUNCTIONS   ######
+##################################
+
+#Proceses Speech Data and decides what to do
+def string_processing(string_queue,sound_queue,motor_queue,money,money_lock,led_lock):
+
+    while True:
+        string = string_queue.get()
+
+        #Get string
+        word_list = string.split()
+
+        # check machine vending
+        if any(w == x for x in chocobar for w in word_list):
+            if money >= 10:
+                sound_queue.put(1)
+                motor_queue.put(1)
+                #UPDATE LED VALUE
+                led_lock.acquire(True)
+                GPIO.output(money_ok_led, GPIO.HIGH)
+                led_lock.release()
+                #UPDATE MONEY VALUE
+                money_lock.acquire(True)
+                money = money - 10
+                money_lock.release()
+            else:
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.HIGH)
+                led_lock.release()
+                sound_queue.put(11)
+
+        elif any(w == x for x in coke for w in word_list):
+            if money >= 20:
+                sound_queue.put(2)
+                motor_queue.put(2)
+                #UPDATE LED VALUE
+                led_lock.acquire(True)
+                GPIO.output(money_ok_led, GPIO.HIGH)
+                led_lock.release()
+                #UPDATE MONEY VALUE
+                money_lock.acquire(True)
+                money = money - 20
+                money_lock.release()
+            else:
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.HIGH)
+                led_lock.release()
+                sound_queue.put(22)
+
+        elif any(w == x for x in gum for w in word_list):
+            if money >= 30:
+                sound_queue.put(3)
+                motor_queue.put(3)
+                #UPDATE LED VALUE
+                led_lock.acquire(True)
+                GPIO.output(money_ok_led, GPIO.HIGH)
+                led_lock.release()
+                #UPDATE MONEY VALUE
+                money_lock.acquire(True)
+                money = money - 30
+                money_lock.release()
+            else:
+                led_lock.acquire(True)
+                GPIO.output(money_bad_led, GPIO.HIGH)
+                led_lock.release()
+                sound_queue.put(33)
+        elif any(w == x for x in cash for w in word_list):
+
+            sound_queue.put(4)
+
+# listening thread
+# gets all the recognized strings into a fifo queue
+def listening(string_queue,speech_lock):
+    r = sr.Recognizer()
+    m = sr.Microphone()
+
+    print("\n \n \nCalibrating, please remain silent.")
+    # why use this || this is redundant?
+    with m as source:
+        r.adjust_for_ambient_noise(source)
+    print("Set minimum energy threshold to {}".format(r.energy_threshold))
+    print("If Red Led is ON the machine is listening")
+
+    while True:
+        with m as source:
+            speech_lock.acquire(True)
+            GPIO.output(voice_led,GPIO.HIGH)
+            audio = r.listen(source)
+        try:
+            value = r.recognize_google(audio)
+            GPIO.output(voice_led,GPIO.LOW)
+            print('You said \'' + value + '\'\n')
+            speech_lock.release()
+            string_queue.put(value)
+            time.sleep(1)
+        except sr.UnknownValueError:
+            print("Unrecognizable noise")
 
 ##################################
 #######    INITIAL SETUP   #######
@@ -39,98 +323,53 @@ GPIO.cleanup()
 
 # setup output pins
 GPIO.setmode(GPIO.BOARD)
+
 for pin in pin_outs:
     GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, GPIO.LOW)
 for pin in pin_ins:
     GPIO.setup(pin, GPIO.IN)
 
-
-########    CODE SETENCES
-
-hello = ['hello', 'alo']
-chocobar = ['chocobar', 'Google', 'bar', 'chocolate']
-coke = ['Coca-Cola', 'coke', 'cocaine']
-gum = ['gum']
-
 ##################################
-######   SPEECH FUNCTIONS   ######
+########   MAIN PROGRAM   ########
 ##################################
 
+### GLOBAL VARIABLES
+money = 0
 
-# listening thread
-## gets all the recognized strings into a fifo queu
-def listening(string_queue):
-    r = sr.Recognizer()
-    m = sr.Microphone()
+### THREAD COMMUNICATION Queues
+string_queue = queue.Queue()
+sound_queue = queue.Queue()
+motor_queue = queue.Queue()
 
-    print("Calibrating, please remain silent.")
-    # why use this || this is redundant?
-    with m as source:
-        r.adjust_for_ambient_noise(source)
-    print("Set minimum energy threshold to {}".format(r.energy_threshold))
-    print("Listening")
-    while True:
-        with m as source:
-            audio = r.listen(source)
-        try:
-            value = r.recognize_google(audio)
-            print(value)
-            string_queue.put(value)
-        except sr.UnknownValueError:
-            print("Unrecognizable noise")
+### THREAD COMMUNICATION Locks
+speech_lock = threading.Lock()
+money_lock = threading.Lock()
+led_lock = threading.Lock()
 
-def string_processing(string_queue, speaker_flag):
-    # start flag usage to manage resources
-    choco_bar_motor_flag = threading.Event()
-    choco_bar_motor_flag.set()
-    coke_motor_flag = threading.Event()
-    coke_motor_flag.set()
-    gum_motor_flag = threading.Event()
-    gum_motor_flag.set()
+### THREAD CONFIG
+listening_thread = threading.Thread(target=listening, args=(string_queue,speech_lock,))
+str_processing_thread = threading.Thread(target=string_processing, args=(string_queue,sound_queue,motor_queue,money,money_lock,led_lock,))
+check_money_thread = threading.Thread(target=check_money, args=(money,money_lock,sound_queue,))
+music_thread = threading.Thread(target=background_music, args=(sound_queue,money,speech_lock,led_lock,))
 
-    hello_track = vlc.MediaPlayer("hello.mp3")
+###THREAD INITIALIZATION
 
-    while True:
-        if not string_queue.empty():
-            string = string_queue.get()
-            word_list = string.split()
-            print(word_list, hello)
-            print(any(word_list == x for x in hello))
-            # check for hello entry
-            if any(w == x for x in hello for w in word_list):
-                print('finkel')
-                speaker_flag.clear()
-                hello_track.play()
-                time.sleep(3)
-                hello_track.stop()
-                speaker_flag.set()
-            # check machine vending
-            elif any(w == x for x in chocobar for w in word_list):
-                th = threading.Thread(target=turn_on, args=(choco_bar_motor, 1, choco_bar_motor_flag))
-                th.start()
-            elif any(w == x for x in coke for w in word_list):
-                th = threading.Thread(target=turn_on, args=(coke_motor, 1, coke_motor_flag))
-                th.start()
-            elif any(w == x for x in gum for w in word_list):
-                th = threading.Thread(target=turn_on, args=(gum_motor, 1, gum_motor_flag))
-                th.start()
+listening_thread.start()
+str_processing_thread.start()
+check_money_thread.start()
+music_thread.start()
+
+###############   END OF PROGRAM   ###############
 
 
-##################################
-######    MUSIC FUNCTIONS   ######
-##################################
+### RECURSOS NÃO USADOS
 
-
-def background_music(speaker_flag):
-    p = vlc.MediaPlayer("blackholesun.mp3")
-    p.play()
-
-    while True:
-        if not speaker_flag.isSet():
-            p.stop()
-            speaker_flag.wait()
-            p.play()
-
+#speaker_flag = threading.Event()
+#light_flag = threading.Event()
+#background_light_thread = threading.Thread(target=background_light, args=(light_flag,))
+#background_light_thread.start()
+"""
 def background_light(light_flag):
     while True:
         input_value = GPIO.input(light_button)
@@ -149,55 +388,11 @@ def background_light(light_flag):
                 time.sleep(0.1)
                 c += 1
             GPIO.output(background_light_led,GPIO.LOW)
-
-
-##################################
-####   OPERATIONS FUNCTIONS   ####
-##################################
-
-def check_money(type):
-
-    print('rabo')
-
-def turn_on(port_id, time_sec, resource_flag):
-    resource_flag.wait()
-    resource_flag.clear()
-
-    GPIO.output(port_id, GPIO.HIGH)
-    time.sleep(time_sec)
-    GPIO.output(port_id, GPIO.LOW)
-
-    resource_flag.clear()
-
-
-##################################
-########   MAIN PROGRAM   ########
-##################################
-
-
-###THREAD INITIALIZATION
-
-string_queue = queue.Queue()
-listening_thread = threading.Thread(target=listening, args=(string_queue,))
-listening_thread.start()
-
-speaker_flag = threading.Event()
-speaker_flag.set()
-processing_thread = threading.Thread(target=string_processing, args=(string_queue, speaker_flag))
-processing_thread.start()
-
-back_music_thread = threading.Thread(target=background_music, args=(speaker_flag,))
-back_music_thread.start()
-
-light_flag = threading.Event()
-background_light_thread = threading.Thread(target=background_light, args=(light_flag,))
-background_light_thread.start()
-
-check_money_thread = threading.Thread(target=check_money, args=(0,))
-check_money_thread.start()
-
-'''a = 0
+"""
+"""
+a = 0
 while 1:
   if a != string_queue.qsize():
     print(list(string_queue.queue))
-    a = string_queue.qsize()'''
+    a = string_queue.qsize()
+"""
