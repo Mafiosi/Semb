@@ -4,6 +4,7 @@ import threading
 import RPi.GPIO as GPIO
 import time
 import vlc
+import ctypes
 
 ###########################
 #####   CONFIG PINS   #####
@@ -35,7 +36,7 @@ big_change = 26
 
 hello = ['hello', 'alo']
 chocobar = ['chocobar', 'Google', 'bar', 'chocolate', 'cocoa', 'hookah']
-coke = ['Coca-Cola', 'coke', 'cocaine']
+coke = ['Coca-Cola', 'Coke', 'Cocaine', 'cocaine','coke']
 gum = ['gum']
 cash = ['money','have','change','cash']
 
@@ -43,11 +44,14 @@ cash = ['money','have','change','cash']
 ######    MUSIC FUNCTIONS   ######
 ##################################
 
-def background_music(sound_queue,speech_lock,led_lock):
-
+def background_music(sound_queue,speech_lock,led_lock,f):
     global money
     #Set Volume Parameters
-    volume_good = 60
+    volume_good = 50
+
+    tid = ctypes.CDLL('libc.so.6').syscall(224)
+    print('music', tid)
+    f.write("Main Id:" + str(tid))
 
     #Establish Background Music
     background = vlc.MediaPlayer("background_2.mp3")
@@ -174,7 +178,6 @@ def background_music(sound_queue,speech_lock,led_lock):
                 temp.stop()
             elif money == 20:
                 temp = vlc.MediaPlayer("have_20.mp3")
-                print('lol')
                 temp.play()
                 temp.audio_set_volume(100)
                 time.sleep(3)
@@ -198,13 +201,15 @@ def background_music(sound_queue,speech_lock,led_lock):
 ####   OPERATIONS FUNCTIONS   ####
 ##################################
 
-def motor_control(motor_queue):
+def motor_control(motor_queue,f):
+
+    tid = ctypes.CDLL('libc.so.6').syscall(224)
+    print('motor', tid)
+    f.write("Motor Id:" + str(tid))
+
     while True:
         motor = motor_queue.get()
-        print(motor)
-
         if motor == 1:
-            print("shit")
             GPIO.output(choco_bar_motor,GPIO.HIGH)
             time.sleep(2)
             GPIO.output(choco_bar_motor,GPIO.LOW)
@@ -217,8 +222,12 @@ def motor_control(motor_queue):
             time.sleep(2)
             GPIO.output(gum_motor,GPIO.LOW)
 
-def check_money(money_lock,sound_queue):
+def check_money(money_lock,sound_queue,f):
     global money
+
+    tid = ctypes.CDLL('libc.so.6').syscall(224)
+    print('money', tid)
+    f.write("Money Id:" + str(tid))
 
     while True:
         if(GPIO.input(small_change)):
@@ -242,9 +251,13 @@ def check_money(money_lock,sound_queue):
 ##################################
 
 #Proceses Speech Data and decides what to do
-def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
+def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock,f):
 
     global money
+
+    tid = ctypes.CDLL('libc.so.6').syscall(224)
+    print('string', tid)
+    f.write("String Id:" + str(tid))
 
     while True:
         string = string_queue.get()
@@ -259,7 +272,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(1)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                #GPIO.output(money_ok_led, GPIO.HIGH)
+                GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
@@ -277,7 +290,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(2)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                #GPIO.output(money_ok_led, GPIO.HIGH)
+                GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
@@ -295,7 +308,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(3)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                #GPIO.output(money_ok_led, GPIO.HIGH)
+                GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
@@ -313,7 +326,11 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
 
 # listening thread
 # gets all the recognized strings into a fifo queue
-def listening(string_queue,speech_lock):
+def listening(string_queue,speech_lock,f):
+
+    tid = ctypes.CDLL('libc.so.6').syscall(224)
+    f.write("Listen Id:" + str(tid))
+
     r = sr.Recognizer()
     m = sr.Microphone()
 
@@ -364,6 +381,11 @@ for pin in pin_ins:
 ### GLOBAL VARIABLES
 global money
 money = 0
+tid = ctypes.CDLL('libc.so.6').syscall(224)
+print('main', threading.get_ident(), tid)
+
+f = open("id.txt",'w')
+f.write("Main Id:" + str(tid))
 
 ### THREAD COMMUNICATION Queues
 string_queue = queue.Queue()
@@ -376,11 +398,11 @@ money_lock = threading.Lock()
 led_lock = threading.Lock()
 
 ### THREAD CONFIG
-listening_thread = threading.Thread(target=listening, args=(string_queue,speech_lock,))
-str_processing_thread = threading.Thread(target=string_processing, args=(string_queue,sound_queue,motor_queue,money_lock,led_lock,))
-check_money_thread = threading.Thread(target=check_money, args=(money_lock,sound_queue,))
-music_thread = threading.Thread(target=background_music, args=(sound_queue,speech_lock,led_lock,))
-motor_thread = threading.Thread(target=motor_control, args=(motor_queue,))
+listening_thread = threading.Thread(name= 'listen'+str(tid), target=listening, args=(string_queue,speech_lock,f,))
+str_processing_thread = threading.Thread(name= 'processing',target=string_processing, args=(string_queue,sound_queue,motor_queue,money_lock,led_lock,f,))
+check_money_thread = threading.Thread(name= 'money',target=check_money, args=(money_lock,sound_queue,f,))
+music_thread = threading.Thread(name= 'music',target=background_music, args=(sound_queue,speech_lock,led_lock,f,))
+motor_thread = threading.Thread(name= 'motor',target=motor_control, args=(motor_queue,f,))
 
 ###THREAD INITIALIZATION
 
@@ -390,8 +412,13 @@ check_money_thread.start()
 music_thread.start()
 motor_thread.start()
 
-###############   END OF PROGRAM   ###############
+listening_thread.join()
+str_processing_thread.join()
+check_money_thread.join()
+music_thread.join()
+motor_thread.join()
 
+###############   END OF PROGRAM   ###############
 
 ### RECURSOS NÃO USADOS
 
@@ -399,30 +426,3 @@ motor_thread.start()
 #light_flag = threading.Event()
 #background_light_thread = threading.Thread(target=background_light, args=(light_flag,))
 #background_light_thread.start()
-"""
-def background_light(light_flag):
-    while True:
-        input_value = GPIO.input(light_button)
-        if not light_flag.isSet():
-            while light_flag.isSet():
-                GPIO.output(background_light_led,GPIO.HIGH)
-                time.sleep(0.5)
-                GPIO.output(background_light_led,GPIO.LOW)
-                time.sleep(0.5)
-        elif input_value == 1:
-            GPIO.output(background_light_led,GPIO.HIGH)
-            c = 0
-            while c < 3:
-                if not light_flag.isSet():
-                    break
-                time.sleep(0.1)
-                c += 1
-            GPIO.output(background_light_led,GPIO.LOW)
-"""
-"""
-a = 0
-while 1:
-  if a != string_queue.qsize():
-    print(list(string_queue.queue))
-    a = string_queue.qsize()
-"""
