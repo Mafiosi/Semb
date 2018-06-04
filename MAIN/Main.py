@@ -15,7 +15,7 @@ pin_outs = [8, 10, 12, 16, 18, 22]
 ###    MOTOR
 choco_bar_motor = 8
 coke_motor = 10
-gum_motor = 12
+gum_motor = 12                                                                                                                                                                                                                                                                                                                                                      
 
 ###    LEDS
 voice_led = 16
@@ -48,10 +48,9 @@ def background_music(sound_queue,speech_lock,led_lock):
     global money
     #Set Volume Parameters
     volume_good = 60
-    volume_low = 20
 
     #Establish Background Music
-    background = vlc.MediaPlayer("background_1.mp3")
+    background = vlc.MediaPlayer("background_2.mp3")
     background.play()
     background.audio_set_volume(volume_good)
 
@@ -61,52 +60,57 @@ def background_music(sound_queue,speech_lock,led_lock):
         speech_lock.acquire(True)
         #CASE 1 2 3 MONEY GOOD PRODUCT COMING OUT
         if info == 1:
-            background.audio_set_volume(volume_low)
+            background.pause()
             temp = vlc.MediaPlayer("Choco.mp3")
             temp.play()
+            temp.audio_set_volume(100)
             time.sleep(3)
             temp.stop()
-            background.audio_set_volume(volume_good)
+            background.pause()
             led_lock.acquire(True)
             GPIO.output(money_ok_led, GPIO.LOW)
             led_lock.release()
         elif info == 2:
-            background.audio_set_volume(volume_low)
+            background.pause()
             temp = vlc.MediaPlayer("Coke.mp3")
             temp.play()
+            temp.audio_set_volume(100)
             time.sleep(3)
             temp.stop()
-            background.audio_set_volume(volume_good)
+            background.pause()
             led_lock.acquire(True)
             GPIO.output(money_ok_led, GPIO.LOW)
             led_lock.release()
         elif info == 3:
-            background.audio_set_volume(volume_low)
+            background.pause()
             temp = vlc.MediaPlayer("Gum.mp3")
             temp.play()
+            temp.audio_set_volume(100)
             time.sleep(3)
             temp.stop()
-            background.audio_set_volume(volume_good)
+            background.pause()
             led_lock.acquire(True)
             GPIO.output(money_ok_led, GPIO.LOW)
             led_lock.release()
 
         #CASE 11 22 33 MONEY BAD PRODUCT NOT COMING OUT
         elif info == 11:
-            background.audio_set_volume(volume_low)
+            background.pause()
             temp = vlc.MediaPlayer("miss_10.mp3")
             temp.play()
+            temp.audio_set_volume(100)
             time.sleep(4)
             temp.stop()
-            background.audio_set_volume(volume_good)
+            background.pause()
             led_lock.acquire(True)
             GPIO.output(money_bad_led, GPIO.LOW)
             led_lock.release()
         elif info == 22:
-            background.audio_set_volume(volume_low)
+            background.pause()
             if money >= 10:
                 temp = vlc.MediaPlayer("miss_10.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(4)
                 temp.stop()
                 led_lock.acquire(True)
@@ -115,17 +119,19 @@ def background_music(sound_queue,speech_lock,led_lock):
             else:
                 temp = vlc.MediaPlayer("miss_20.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(4)
                 temp.stop
                 led_lock.acquire(True)
                 GPIO.output(money_bad_led, GPIO.LOW)
                 led_lock.release()
-            background.audio_set_volume(volume_good)
+            background.pause()
         elif info == 33:
-            background.audio_set_volume(volume_low)
+            background.pause()
             if money >= 20:
                 temp = vlc.MediaPlayer("miss_10.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(4)
                 temp.stop()
                 led_lock.acquire(True)
@@ -134,6 +140,7 @@ def background_music(sound_queue,speech_lock,led_lock):
             elif money >= 10:
                 temp = vlc.MediaPlayer("miss_20.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(4)
                 temp.stop()
                 led_lock.acquire(True)
@@ -142,42 +149,49 @@ def background_music(sound_queue,speech_lock,led_lock):
             else:
                 temp = vlc.MediaPlayer("miss_30.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(4)
                 temp.stop
                 led_lock.acquire(True)
                 GPIO.output(money_bad_led, GPIO.LOW)
                 led_lock.release()
-            background.audio_set_volume(volume_good)
+            background.pause()
 
         #CASE 4 SAYS THE MONEY YOU HAVE
         elif info == 4:
-            background.audio_set_volume(volume_low)
+            background.pause()
             if money == 0:
                 temp = vlc.MediaPlayer("have_0.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(5)
                 temp.stop()
-            if money == 10:
+            elif money == 10:
                 temp = vlc.MediaPlayer("have_10.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(3)
                 temp.stop()
             elif money == 20:
                 temp = vlc.MediaPlayer("have_20.mp3")
+                print('lol')
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(3)
                 temp.stop()
             elif money == 30:
                 temp = vlc.MediaPlayer("have_30.mp3")
                 temp.play()
+                #temp.audio_set_volume(100)
                 time.sleep(3)
                 temp.stop()
             else:
                 temp = vlc.MediaPlayer("have_more_30.mp3")
                 temp.play()
+                temp.audio_set_volume(100)
                 time.sleep(3)
                 temp.stop()
-            background.audio_set_volume(volume_good)
+            background.pause()
         speech_lock.release()
 
 ##################################
@@ -185,22 +199,23 @@ def background_music(sound_queue,speech_lock,led_lock):
 ##################################
 
 def motor_control(motor_queue):
+    while True:
+        motor = motor_queue.get()
+        print(motor)
 
-    motor = motor_queue.get()
-
-    if motor == 1:
-        print("shit")
-        GPIO.output(choco_bar_motor,GPIO.HIGH)
-        time.sleep(2)
-        GPIO.output(choco_bar_motor,GPIO.LOW)
-    elif motor == 2:
-        GPIO.output(coke_motor,GPIO.HIGH)
-        time.sleep(2)
-        GPIO.output(coke_motor,GPIO.LOW)
-    if motor == 3:
-        GPIO.output(gum_motor,GPIO.HIGH)
-        time.sleep(2)
-        GPIO.output(gum_motor,GPIO.LOW)
+        if motor == 1:
+            print("shit")
+            GPIO.output(choco_bar_motor,GPIO.HIGH)
+            time.sleep(2)
+            GPIO.output(choco_bar_motor,GPIO.LOW)
+        elif motor == 2:
+            GPIO.output(coke_motor,GPIO.HIGH)
+            time.sleep(2)
+            GPIO.output(coke_motor,GPIO.LOW)
+        if motor == 3:
+            GPIO.output(gum_motor,GPIO.HIGH)
+            time.sleep(2)
+            GPIO.output(gum_motor,GPIO.LOW)
 
 def check_money(money_lock,sound_queue):
     global money
@@ -244,7 +259,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(1)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                GPIO.output(money_ok_led, GPIO.HIGH)
+                #GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
@@ -262,7 +277,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(2)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                GPIO.output(money_ok_led, GPIO.HIGH)
+                #GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
@@ -280,7 +295,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
                 motor_queue.put(3)
                 #UPDATE LED VALUE
                 led_lock.acquire(True)
-                GPIO.output(money_ok_led, GPIO.HIGH)
+                #GPIO.output(money_ok_led, GPIO.HIGH)
                 led_lock.release()
                 #UPDATE MONEY VALUE
                 money_lock.acquire(True)
