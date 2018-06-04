@@ -37,14 +37,15 @@ hello = ['hello', 'alo']
 chocobar = ['chocobar', 'Google', 'bar', 'chocolate', 'cocoa', 'hookah']
 coke = ['Coca-Cola', 'coke', 'cocaine']
 gum = ['gum']
-cash = ['money','have','change']
+cash = ['money','have','change','cash']
 
 ##################################
 ######    MUSIC FUNCTIONS   ######
 ##################################
 
-def background_music(sound_queue,money,speech_lock,led_lock):
+def background_music(sound_queue,speech_lock,led_lock):
 
+    global money
     #Set Volume Parameters
     volume_good = 60
     volume_low = 20
@@ -57,7 +58,7 @@ def background_music(sound_queue,money,speech_lock,led_lock):
     #Eventually change Sounds
     while True:
         info = sound_queue.get()
-        speech_lock.acquire()
+        speech_lock.acquire(True)
         #CASE 1 2 3 MONEY GOOD PRODUCT COMING OUT
         if info == 1:
             background.audio_set_volume(volume_low)
@@ -151,6 +152,11 @@ def background_music(sound_queue,money,speech_lock,led_lock):
         #CASE 4 SAYS THE MONEY YOU HAVE
         elif info == 4:
             background.audio_set_volume(volume_low)
+            if money == 0:
+                temp = vlc.MediaPlayer("have_0.mp3")
+                temp.play()
+                time.sleep(5)
+                temp.stop()
             if money == 10:
                 temp = vlc.MediaPlayer("have_10.mp3")
                 temp.play()
@@ -183,6 +189,7 @@ def motor_control(motor_queue):
     motor = motor_queue.get()
 
     if motor == 1:
+        print("shit")
         GPIO.output(choco_bar_motor,GPIO.HIGH)
         time.sleep(2)
         GPIO.output(choco_bar_motor,GPIO.LOW)
@@ -195,13 +202,14 @@ def motor_control(motor_queue):
         time.sleep(2)
         GPIO.output(gum_motor,GPIO.LOW)
 
-def check_money(money,money_lock,sound_queue):
+def check_money(money_lock,sound_queue):
+    global money
 
     while True:
         if(GPIO.input(small_change)):
             money_lock.acquire(True)
             money = money + 10
-            print("You Have" + money + "Cents")
+            print("You Have" + str(money) + "Cents")
             money_lock.release()
             sound_queue.put(4)
             time.sleep(0.4)
@@ -209,7 +217,7 @@ def check_money(money,money_lock,sound_queue):
         if(GPIO.input(big_change)):
             money_lock.acquire(True)
             money = money + 20
-            print("You Have" + money + "Cents")
+            print("You Have " + str(money) + " Cents")
             money_lock.release()
             sound_queue.put(4)
             time.sleep(0.4)
@@ -219,7 +227,9 @@ def check_money(money,money_lock,sound_queue):
 ##################################
 
 #Proceses Speech Data and decides what to do
-def string_processing(string_queue,sound_queue,motor_queue,money,money_lock,led_lock):
+def string_processing(string_queue,sound_queue,motor_queue,money_lock,led_lock):
+
+    global money
 
     while True:
         string = string_queue.get()
@@ -281,6 +291,7 @@ def string_processing(string_queue,sound_queue,motor_queue,money,money_lock,led_
                 GPIO.output(money_bad_led, GPIO.HIGH)
                 led_lock.release()
                 sound_queue.put(33)
+
         elif any(w == x for x in cash for w in word_list):
 
             sound_queue.put(4)
@@ -300,9 +311,9 @@ def listening(string_queue,speech_lock):
 
     while True:
         with m as source:
-            speech_lock.acquire(True)
             GPIO.output(voice_led,GPIO.HIGH)
             audio = r.listen(source)
+            speech_lock.acquire(True)
         try:
             value = r.recognize_google(audio)
             GPIO.output(voice_led,GPIO.LOW)
@@ -312,6 +323,7 @@ def listening(string_queue,speech_lock):
             time.sleep(1)
         except sr.UnknownValueError:
             print("Unrecognizable noise")
+            speech_lock.release()
 
 ##################################
 #######    INITIAL SETUP   #######
@@ -335,6 +347,7 @@ for pin in pin_ins:
 ##################################
 
 ### GLOBAL VARIABLES
+global money
 money = 0
 
 ### THREAD COMMUNICATION Queues
@@ -349,9 +362,10 @@ led_lock = threading.Lock()
 
 ### THREAD CONFIG
 listening_thread = threading.Thread(target=listening, args=(string_queue,speech_lock,))
-str_processing_thread = threading.Thread(target=string_processing, args=(string_queue,sound_queue,motor_queue,money,money_lock,led_lock,))
-check_money_thread = threading.Thread(target=check_money, args=(money,money_lock,sound_queue,))
-music_thread = threading.Thread(target=background_music, args=(sound_queue,money,speech_lock,led_lock,))
+str_processing_thread = threading.Thread(target=string_processing, args=(string_queue,sound_queue,motor_queue,money_lock,led_lock,))
+check_money_thread = threading.Thread(target=check_money, args=(money_lock,sound_queue,))
+music_thread = threading.Thread(target=background_music, args=(sound_queue,speech_lock,led_lock,))
+motor_thread = threading.Thread(target=motor_control, args=(motor_queue,))
 
 ###THREAD INITIALIZATION
 
@@ -359,6 +373,7 @@ listening_thread.start()
 str_processing_thread.start()
 check_money_thread.start()
 music_thread.start()
+motor_thread.start()
 
 ###############   END OF PROGRAM   ###############
 
