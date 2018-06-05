@@ -5,6 +5,7 @@ import RPi.GPIO as GPIO
 import time
 import vlc
 import ctypes
+import _thread
 
 ###########################
 #####   CONFIG PINS   #####
@@ -37,8 +38,41 @@ big_change = 26
 hello = ['hello', 'alo']
 chocobar = ['chocobar', 'Google', 'bar', 'chocolate', 'cocoa', 'hookah']
 coke = ['Coca-Cola', 'Coke', 'Cocaine', 'cocaine','coke']
-gum = ['gum']
+gum = ['gum','game', 'Gum','come','Come']
 cash = ['money','have','change','cash']
+
+###########################
+####  SCHED CLASSES    ####
+###########################
+
+class Operation(threading.Timer):
+    def __init__(self, *args, **kwargs):
+        threading.Timer.__init__(self, *args, **kwargs)
+        self.setDaemon(True)
+
+    def run(self):
+        while True:
+            self.finished.clear()
+            self.finished.wait(self.interval)
+            if not self.finished.isSet():
+                self.function(*self.args, **self.kwargs)
+            else:
+                return
+            self.finished.set()
+
+class Manager(object):
+
+    ops = []
+
+    def add_operation(self, operation, interval, args=[], kwargs={}):
+        op = Operation(interval, operation, args, kwargs)
+        self.ops.append(op)
+        _thread.start_new_thread(op.run, ())
+
+    def stop(self):
+        for op in self.ops:
+            op.cancel()
+        self._event.set()
 
 ##################################
 ######    MUSIC FUNCTIONS   ######
@@ -47,7 +81,7 @@ cash = ['money','have','change','cash']
 def background_music(sound_queue,speech_lock,led_lock,f):
     global money
     #Set Volume Parameters
-    volume_good = 50
+    volume_good = 60
 
     tid = ctypes.CDLL('libc.so.6').syscall(224)
     print('music', tid)
@@ -55,6 +89,7 @@ def background_music(sound_queue,speech_lock,led_lock,f):
 
     #Establish Background Music
     background = vlc.MediaPlayer("background_2.mp3")
+    print (background.get_instance())
     background.play()
     background.audio_set_volume(volume_good)
 
@@ -211,15 +246,15 @@ def motor_control(motor_queue,f):
         motor = motor_queue.get()
         if motor == 1:
             GPIO.output(choco_bar_motor,GPIO.HIGH)
-            time.sleep(2)
+            time.sleep(1)
             GPIO.output(choco_bar_motor,GPIO.LOW)
         elif motor == 2:
             GPIO.output(coke_motor,GPIO.HIGH)
-            time.sleep(2)
+            time.sleep(1)
             GPIO.output(coke_motor,GPIO.LOW)
         if motor == 3:
             GPIO.output(gum_motor,GPIO.HIGH)
-            time.sleep(2)
+            time.sleep(1)
             GPIO.output(gum_motor,GPIO.LOW)
 
 def check_money(money_lock,sound_queue,f):
@@ -230,6 +265,7 @@ def check_money(money_lock,sound_queue,f):
     f.write("Money Id:" + str(tid))
 
     while True:
+        t = time.time()
         if(GPIO.input(small_change)):
             money_lock.acquire(True)
             money = money + 10
@@ -343,15 +379,19 @@ def listening(string_queue,speech_lock,f):
 
     while True:
         with m as source:
+            t = time.time()
             GPIO.output(voice_led,GPIO.HIGH)
             audio = r.listen(source)
             speech_lock.acquire(True)
+            print('source',t - time.time())
         try:
+            t = time.time()
             value = r.recognize_google(audio)
             GPIO.output(voice_led,GPIO.LOW)
             print('You said \'' + value + '\'\n')
             speech_lock.release()
             string_queue.put(value)
+            print('try', t - time.time())
             time.sleep(1)
         except sr.UnknownValueError:
             print("Unrecognizable noise")
@@ -381,6 +421,7 @@ for pin in pin_ins:
 ### GLOBAL VARIABLES
 global money
 money = 0
+
 tid = ctypes.CDLL('libc.so.6').syscall(224)
 print('main', threading.get_ident(), tid)
 
@@ -418,6 +459,8 @@ check_money_thread.join()
 music_thread.join()
 motor_thread.join()
 
+time.sleep(1)
+f.close()
 ###############   END OF PROGRAM   ###############
 
 ### RECURSOS NÃO USADOS
