@@ -28,6 +28,6 @@ The machine construction as well as the internal circuit for activating the moto
 This projects serves as an simple experiment of the voice recognition protocol, the Raspberry Pi 3 controller and an introduction to the Python Language.
 
 ### Author
-**João Beleza**
-**Júnio Parente**
+**João Beleza**  
+**Júnio Parente**  
 **Tiago Neves**
