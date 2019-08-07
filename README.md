@@ -1,4 +1,4 @@
-# Implementation of a Vending Machine with Voice Recognition
+# Vending Machine with Voice Recognition
 
 Development of a basic Vending Machine using a Raspberry Pi 3 as a controller unit.
 
